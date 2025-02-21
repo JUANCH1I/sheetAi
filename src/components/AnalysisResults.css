@@ -1,0 +1,40 @@
+.analysis-results {
+    margin-top: 20px;
+  }
+  
+  .analysis-results h2 {
+    margin-bottom: 10px;
+  }
+  
+  .results-container {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 15px;
+  }
+  
+  .results-container h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+  }
+  
+  .result-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 5px;
+  }
+  
+  .result-item dt {
+    font-weight: bold;
+  }
+  
+  ul {
+    list-style-type: none;
+    padding-left: 0;
+  }
+  
+  li {
+    margin-bottom: 5px;
+  }
+  
+  

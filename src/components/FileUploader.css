@@ -1,0 +1,30 @@
+.file-uploader {
+    border: 2px dashed #ccc;
+    border-radius: 8px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .file-uploader.drag-active {
+    border-color: #007bff;
+    background-color: #f0f8ff;
+  }
+  
+  .file-uploader input[type="file"] {
+    display: none;
+  }
+  
+  .file-uploader label {
+    cursor: pointer;
+  }
+  
+  .file-uploader span {
+    color: #007bff;
+  }
+  
+  .file-uploader span:hover {
+    text-decoration: underline;
+  }
+  
+  

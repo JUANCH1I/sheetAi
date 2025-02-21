@@ -1,73 +1,64 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { BrowserRouter as Router, Route, Routes, Navigate } from "react-router-dom"
-import { supabase } from "./supabase"
-import { Login } from "./components/Login"
-import { Register } from "./components/Register"
-import { Dashboard } from "./components/Dashboard"
-import { TableView } from "./components/TableView"
+import { useState } from "react"
 import { FileUploader } from "./components/FileUploader"
+import { DataPreview } from "./components/DataPreview"
+import { ProcessingStatus } from "./components/ProcessingStatus"
+import { AnalysisResults } from "./components/AnalysisResults"
 import "./App.css"
 
-function App() {
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+export default function App() {
+  const [data, setData] = useState(null)
+  const [status, setStatus] = useState("idle")
+  const [analysis, setAnalysis] = useState(null)
 
-  useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      setUser(session?.user ?? null)
-      setLoading(false)
-    }
+  const handleFileProcessed = (processedData) => {
+    setData(processedData)
+    setStatus("processed")
 
-    getSession()
-
-    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
-      setUser(session?.user ?? null)
-      setLoading(false)
+    // Analizar los tipos de datos
+    const dataTypes = {}
+    Object.keys(processedData).forEach((sheetName) => {
+      dataTypes[sheetName] = {}
+      const sheet = processedData[sheetName]
+      if (sheet.length > 0) {
+        Object.keys(sheet[0]).forEach((column) => {
+          const columnData = sheet.map((row) => row[column])
+          dataTypes[sheetName][column] = detectDataType(columnData)
+        })
+      }
     })
 
-    return () => {
-      // En Supabase v2, la suscripción se encuentra en authListener.subscription
-      authListener.subscription?.unsubscribe()
-    }
-  }, [])
+    // Actualizar el análisis
+    setAnalysis({
+      totalSheets: Object.keys(processedData).length,
+      totalRows: Object.values(processedData).reduce((acc, sheet) => acc + sheet.length, 0),
+      dataTypes: dataTypes,
+    })
+  }
 
-  if (loading) {
-    return <div>Cargando...</div>
+  // Función para detectar el tipo de datos de una columna
+  const detectDataType = (columnData) => {
+    const types = columnData.map((value) => {
+      if (value === null || value === undefined) return "null"
+      if (typeof value === "number") return "number"
+      if (!isNaN(Date.parse(value))) return "date"
+      if (typeof value === "boolean") return "boolean"
+      return "string"
+    })
+
+    const uniqueTypes = [...new Set(types)]
+    return uniqueTypes.length === 1 ? uniqueTypes[0] : "mixed"
   }
 
   return (
-    <Router>
-      <div className="app-container">
-        <Routes>
-          <Route
-            path="/"
-            element={user ? <Navigate to="/dashboard" /> : <Login />}
-          />
-          <Route
-            path="/register"
-            element={user ? <Navigate to="/dashboard" /> : <Register />}
-          />
-          <Route
-            path="/dashboard"
-            element={user ? <Dashboard user={user} /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/table/:id"
-            element={user ? <TableView user={user} /> : <Navigate to="/" />}
-          />
-          <Route
-            path="/upload"
-            element={user ? <FileUploader user={user} /> : <Navigate to="/" />}
-          />
-        </Routes>
-      </div>
-    </Router>
+    <div className="app-container">
+      <h1>Importación y Análisis de Excel</h1>
+      <FileUploader onFileProcessed={handleFileProcessed} setStatus={setStatus} />
+      <ProcessingStatus status={status} />
+      {data && <DataPreview data={data} />}
+      {analysis && <AnalysisResults analysis={analysis} />}
+    </div>
   )
-  
 }
-
-export default App
 

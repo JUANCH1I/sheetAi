@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Link } from "react-router-dom"
-import { supabase } from "../supabase"
+import { db } from "../firebase"
 import "./Dashboard.css"
 
 export const Dashboard = ({ user }) => {
@@ -10,13 +10,10 @@ export const Dashboard = ({ user }) => {
 
   useEffect(() => {
     const fetchTables = async () => {
-      const { data, error } = await supabase.from("tables").select("*").eq("user_id", user.id)
-
-      if (error) {
-        console.error("Error fetching tables:", error)
-      } else {
-        setTables(data)
-      }
+      const tablesRef = db.collection("users").doc(user.uid).collection("tables")
+      const snapshot = await tablesRef.get()
+      const tablesList = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+      setTables(tablesList)
     }
 
     fetchTables()

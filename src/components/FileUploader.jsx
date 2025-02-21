@@ -1,53 +1,51 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import * as XLSX from "xlsx"
-import { supabase } from "../supabase"
-import "./FileUploader.css"
+import { useState } from 'react'
+import * as XLSX from 'xlsx'
 
-export const FileUploader = ({ user }) => {
+export const FileUploader = ({ onFileProcessed, setStatus }) => {
   const [dragActive, setDragActive] = useState(false)
-  const [status, setStatus] = useState("idle")
-  const navigate = useNavigate()
 
-  const processExcelFile = async (file) => {
-    setStatus("processing")
+  const processExcelFile = (file) => {
+    setStatus('processing')
     const reader = new FileReader()
-    reader.onload = async (e) => {
-      try {
-        const data = e.target.result
-        const workbook = XLSX.read(data, { type: "binary" })
-        const sheetName = workbook.SheetNames[0]
+    reader.onload = (e) => {
+      const data = e.target.result
+      const workbook = XLSX.read(data, { type: 'binary' })
+      const processedData = {}
+
+      workbook.SheetNames.forEach((sheetName) => {
         const worksheet = workbook.Sheets[sheetName]
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
+        let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 })
 
-        const headers = jsonData[0]
-        const rows = jsonData.slice(1)
+        // Filtrar filas vacías
+        jsonData = jsonData.filter((row) =>
+          row.some((cell) => cell !== null && cell !== '')
+        )
 
-        // Guardar en Supabase
-        const { data: tableData, error } = await supabase
-          .from("tables")
-          .insert({
-            user_id: user.id,
-            name: file.name,
-            columns: headers,
-            rows: rows.map((row) => Object.fromEntries(headers.map((header, index) => [header, row[index]]))),
-          })
-          .single()
+        // Detectar fila de encabezados
+        const headerRowIndex = jsonData.findIndex(
+          (row) =>
+            row.filter(
+              (cell) => typeof cell === 'string' && /[a-zA-Z]/.test(cell)
+            ).length >
+            row.length / 2
+        )
 
-        if (error) throw error
+        if (headerRowIndex !== -1) {
+          const headers = jsonData[headerRowIndex]
+          const dataRows = jsonData.slice(headerRowIndex + 1)
+          processedData[sheetName] = dataRows.map((row) =>
+            Object.fromEntries(
+              headers.map((header, index) => [header, row[index]])
+            )
+          )
+        } else {
+          processedData[sheetName] = jsonData
+        }
+      })
 
-        setStatus("processed")
-        navigate(`/table/${tableData.id}`)
-      } catch (error) {
-        console.error("Error processing file:", error)
-        setStatus("error")
-      }
-    }
-    reader.onerror = (error) => {
-      console.error("Error reading file:", error)
-      setStatus("error")
+      onFileProcessed(processedData)
     }
     reader.readAsBinaryString(file)
   }
@@ -55,9 +53,9 @@ export const FileUploader = ({ user }) => {
   const handleDrag = (e) => {
     e.preventDefault()
     e.stopPropagation()
-    if (e.type === "dragenter" || e.type === "dragover") {
+    if (e.type === 'dragenter' || e.type === 'dragover') {
       setDragActive(true)
-    } else if (e.type === "dragleave") {
+    } else if (e.type === 'dragleave') {
       setDragActive(false)
     }
   }
@@ -80,17 +78,27 @@ export const FileUploader = ({ user }) => {
 
   return (
     <div
-      className={`file-uploader ${dragActive ? "drag-active" : ""}`}
+      className={`border-2 border-dashed rounded-lg p-8 text-center ${
+        dragActive ? 'border-blue-500 bg-blue-50' : 'border-gray-300'
+      }`}
       onDragEnter={handleDrag}
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
     >
-      <input type="file" id="file-upload" onChange={handleChange} accept=".xlsx,.xls" />
-      <label htmlFor="file-upload">
-        <span>Elige un archivo</span> o arrástralo aquí
+      <input
+        type='file'
+        id='file-upload'
+        className='hidden'
+        onChange={handleChange}
+        accept='.xlsx,.xls'
+      />
+      <label htmlFor='file-upload' className='cursor-pointer'>
+        <span className='text-blue-600 hover:text-blue-800'>
+          Elige un archivo
+        </span>{' '}
+        o arrástralo aquí
       </label>
     </div>
   )
 }
-
